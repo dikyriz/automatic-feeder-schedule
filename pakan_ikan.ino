@@ -49,11 +49,17 @@ String statusFeed;
 unsigned long lastTime = 0;
 unsigned long timerDelay = 10000;
 
+int angka = 50;
+
+// Variabel untuk melacak apakah "pakan" sudah dicetak
+bool hasFedAt22 = false;
+bool hasFedAt23 = false;
+
 WiFiClientSecure httpsClient;
 HTTPClient http;
 
 
-//Untuk melakukan request ke API JSON
+//Untuk melakukan request jadwal ke API JSON
 String httpGETRequest(const char *serverName)
 {
 
@@ -78,14 +84,15 @@ String httpGETRequest(const char *serverName)
   return payload;
 }
 
-String httpPostData(const char *SERVER){
+// untuk melakukan pengiriman data sensor
+String httpPostData(const char *serverName){
 
   httpsClient.setInsecure();
-  httpsClient.connect(SERVER, 443);
+  httpsClient.connect(serverName, 443);
 
   Serial.print("[HTTP] begin...\n");
   // configure traged server and url
-  http.begin(httpsClient, SERVER);  // HTTP
+  http.begin(httpsClient, serverName);  // HTTP
   http.addHeader("Content-Type", "application/json");
 
   Serial.print("[HTTP] POST...\n");
@@ -113,6 +120,59 @@ String httpPostData(const char *SERVER){
 
   http.end();
   return payload;
+}
+
+// untuk melakukan request status pemberian pakan secara langsung
+String httpGetStatusFeed(const char *serverName){
+  httpsClient.setInsecure();
+  httpsClient.connect(serverName, 443);
+
+  http.begin(httpsClient, serverName);
+
+  String payload;
+  int response = http.GET();
+  if (response == HTTP_CODE_OK)
+  {
+    payload = http.getString();
+  }
+  else
+  {
+    Serial.print("Error code: ");
+    Serial.println(response);
+  }
+
+  http.end();
+  return payload;
+}
+
+// untuk melakukan update status pemberian pakan
+String httpUpdateStatusFeed(const char *serverName){
+  httpsClient.setInsecure();
+  httpsClient.connect(serverName, 443);
+
+  http.begin(httpsClient, serverName);
+  http.addHeader("Content-Type", "application/json");
+  
+  int httpCode = http.PUT("");
+  String payload;
+  if (httpCode > 0) {
+      // HTTP header has been send and Server response header has been handled
+      Serial.printf("[HTTP] PUT... code: %d\n", httpCode);
+
+      
+      // file found at server
+      if (httpCode == HTTP_CODE_OK) {
+        payload = http.getString();
+        Serial.println("received payload:\n<<");
+        Serial.println(payload);
+        Serial.println(">>");
+      }
+    } else {
+      Serial.printf("[HTTP] PUT... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+
+    http.end();
+    return payload;
 }
 
 
@@ -167,6 +227,30 @@ void loop()
       int status_code = doc["status"]["code"]; // 200
       const char* status_message = doc["status"]["message"]; // "OK"
 
+      //---- pengecekan jadwal
+      JsonArray ardata = doc["data"];
+      Serial.println(ardata);
+      if (ardata.isNull() || ardata.size() == 0) {
+        Serial.println("Array 'data' kosong");
+
+        if(timeClient.getHours() == 22 && !hasFedAt22){
+          Serial.println("pakan");
+          hasFedAt22 = true;
+        } else if(timeClient.getHours() == 23 && !hasFedAt23){
+          Serial.println("pakan");
+          hasFedAt23 = true;
+        }
+      } else {
+        Serial.println("Array 'data' tidak kosong");
+      } 
+
+      // Reset flags pada jam tertentu (misalnya setelah tengah malam)
+      if (timeClient.getHours() == 0) {
+        hasFedAt22 = false;
+        hasFedAt23 = false;
+      }
+      //----
+
       for (JsonObject data_item : doc["data"].as<JsonArray>()) {
 
         int data_item_id = data_item["id"]; // 12, 2, 11
@@ -182,19 +266,22 @@ void loop()
 
       }
 
-      // for (JsonObject elem : doc.as<JsonArray>())
-      // {
-      //   // const char *cuaca = elem["cuaca"];
-      //   const char *data = elem["data"];
-      //   const char *minute = elem["minute"];
+      statusFeed = httpGetStatusFeed(serverFeed);
+      Serial.println(statusFeed);
 
-      //   Serial.println("--------------");
-      //   Serial.println(data);
-      //   // Serial.println(minute);
+      deserializeJson(doc, statusFeed);
 
-      //   delay(1500);
+      int data_id = doc["data"]["id"]; // 28
+      bool data_pending = doc["data"]["pending"]; // false
         
-      // }
+      Serial.println(data_pending);
+
+      httpUpdateStatusFeed(serverFeedComplete);
+
+      delay(1500);
+
+      String huruf = String(angka);
+      
     }
     else
     {
