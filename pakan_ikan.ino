@@ -29,21 +29,21 @@ const char *ssid = "Cilok";
 const char *password = "sodaGembirah";
 
 //link untuk mengirim nilai sensor
-#define SERVER "https://service-feed.dimasoktafianto.my.id/api/ph-readings/create"
+#define SERVER "https://service-feed.dimasoktafianto.my.id/api/"
 
 // Data pH
 String phValue = "5.00";
 
 //Server API JSON untuk jadwal
-const char *serverName = "https://service-feed.dimasoktafianto.my.id/api/feeding-schedules";
+// const char *serverName = "https://service-feed.dimasoktafianto.my.id/api/";
 String scheduleReading;
 
 //link untuk melakukan pemberian pakan
-#define serverFeed "https://service-feed.dimasoktafianto.my.id/api/manual-feeds/latest"
+// #define serverFeed "https://service-feed.dimasoktafianto.my.id/api/"
 String statusFeed;
 
 //link untuk mengirim status pemberian pakan selesai
-#define serverFeedComplete "https://service-feed.dimasoktafianto.my.id/api/manual-feeds/29/complete"
+// #define serverFeedComplete "https://service-feed.dimasoktafianto.my.id/api/29/complete"
 
 //Milis
 unsigned long lastTime = 0;
@@ -74,9 +74,9 @@ String httpGETRequest(const char *serverName)
 {
 
   httpsClient.setInsecure();
-  httpsClient.connect(serverName, 443);
+  httpsClient.connect(String(serverName) + "feeding-schedules", 443);
 
-  http.begin(httpsClient, serverName);
+  http.begin(httpsClient, String(serverName) + "feeding-schedules");
 
   String payload;
   int response = http.GET();
@@ -98,11 +98,11 @@ String httpGETRequest(const char *serverName)
 String httpPostData(const char *serverName){
 
   httpsClient.setInsecure();
-  httpsClient.connect(serverName, 443);
+  httpsClient.connect(String(serverName) + "ph-readings/create", 443);
 
   Serial.print("[HTTP] begin...\n");
   // configure traged server and url
-  http.begin(httpsClient, serverName);  // HTTP
+  http.begin(httpsClient, String(serverName) + "ph-readings/create");  // HTTP
   http.addHeader("Content-Type", "application/json");
 
   Serial.print("[HTTP] POST...\n");
@@ -135,9 +135,9 @@ String httpPostData(const char *serverName){
 // untuk melakukan request status pemberian pakan secara langsung
 String httpGetStatusFeed(const char *serverName){
   httpsClient.setInsecure();
-  httpsClient.connect(serverName, 443);
+  httpsClient.connect(String(serverName) + "manual-feeds/latest", 443);
 
-  http.begin(httpsClient, serverName);
+  http.begin(httpsClient, String(serverName) + "manual-feeds/latest");
 
   String payload;
   int response = http.GET();
@@ -158,9 +158,9 @@ String httpGetStatusFeed(const char *serverName){
 // untuk melakukan update status pemberian pakan
 String httpUpdateStatusFeed(const char *serverName, int feedId){
   httpsClient.setInsecure();
-  httpsClient.connect(serverName + String(feedId) + "/complete", 443);
+  httpsClient.connect(String(serverName) + "manual-feeds/" + String(feedId) + "/complete", 443);
 
-  http.begin(httpsClient, serverName + String(feedId) + "/complete");
+  http.begin(httpsClient, String(serverName)  + "manual-feeds/" + String(feedId) + "/complete");
   http.addHeader("Content-Type", "application/json");
   
   int httpCode = http.PUT("");
@@ -228,7 +228,7 @@ void loop()
       //melakukan pemanggilan jadwal
 
       //Melakukan Request ke API JSON
-      scheduleReading = httpGETRequest(serverName);
+      scheduleReading = httpGETRequest(SERVER);
       Serial.println("---- REQUEST RESULT FROM API ----");
       Serial.println(scheduleReading);
       Serial.println("----  ----");
@@ -327,7 +327,7 @@ void loop()
 
       //melakukan pemberian pakan sekarang
 
-      statusFeed = httpGetStatusFeed(serverFeed);
+      statusFeed = httpGetStatusFeed(SERVER);
       Serial.println(statusFeed);
 
       deserializeJson(doc, statusFeed);
@@ -340,7 +340,7 @@ void loop()
       if (data_pending != previousDataPending) { // Cek apakah ada perubahan pada data_pending
         if (data_pending) {
           Serial.println("siap lakukan proses");
-          httpUpdateStatusFeed(serverFeedComplete, data_id);
+          httpUpdateStatusFeed(SERVER, data_id);
         } else {
           Serial.println("belum dapat melakukan proses");
         }
