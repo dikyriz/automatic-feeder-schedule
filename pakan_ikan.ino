@@ -36,7 +36,7 @@ String phValue = "5.00";
 
 //Server API JSON untuk jadwal
 const char *serverName = "https://service-feed.dimasoktafianto.my.id/api/feeding-schedules";
-String weatherReading;
+String scheduleReading;
 
 //link untuk melakukan pemberian pakan
 #define serverFeed "https://service-feed.dimasoktafianto.my.id/api/manual-feeds/latest"
@@ -56,6 +56,14 @@ bool hasFedAt22 = false;
 bool hasFedAt23 = false;
 
 bool previousDataPending = false;
+
+int data_item_hour[3];
+int data_item_minute[3];
+bool hasFedToday[3] ;
+int timeCount;
+
+int lastFeedHour = -1;
+int lastFeedMinute = -1;
 
 WiFiClientSecure httpsClient;
 HTTPClient http;
@@ -210,24 +218,49 @@ void loop()
     {
 
       timeClient.update();
-      Serial.println(timeClient.getFormattedTime());
+      int currentHour = timeClient.getHours();
+      int currentMinute = timeClient.getMinutes();
 
-      Serial.println(timeClient.getHours());
-      Serial.println(timeClient.getMinutes());
+      // Serial.println(timeClient.getFormattedTime());
+      // Serial.println(timeClient.getHours());
+      // Serial.println(timeClient.getMinutes());
+
+      //melakukan pemanggilan jadwal
 
       //Melakukan Request ke API JSON
-      weatherReading = httpGETRequest(serverName);
+      scheduleReading = httpGETRequest(serverName);
       Serial.println("---- REQUEST RESULT FROM API ----");
-      Serial.println(weatherReading);
+      Serial.println(scheduleReading);
       Serial.println("----  ----");
       
       //Proses deserialize
-      deserializeJson(doc, weatherReading);
+      deserializeJson(doc, scheduleReading);
 
      
       //Iterasi untuk menunjukan semua elemen yang ada di JSON
       int status_code = doc["status"]["code"]; // 200
       const char* status_message = doc["status"]["message"]; // "OK"
+
+      // Inisialisasi array hasFedToday ke false
+      for (int i = 0; i < timeCount; i++) {
+        hasFedToday[i] = false;        
+      }
+
+      // Loop untuk memasukkan data ke dalam array
+      for (int i = 0; i < 3; i++) {
+        data_item_hour[i] = doc["data"][i]["hour"]["int"];
+        data_item_minute[i] = doc["data"][i]["minute"]["int"];
+      }
+
+      // Output array hasil parsing
+      for (int i = 0; i < 3; i++) {
+        Serial.print("Time ");
+        Serial.print(i + 1);
+        Serial.print(": ");
+        Serial.print(data_item_hour[i]);
+        Serial.print(":");
+        Serial.println(data_item_minute[i]);
+      }
 
       //---- pengecekan jadwal
       JsonArray ardata = doc["data"];
@@ -244,29 +277,55 @@ void loop()
         }
       } else {
         Serial.println("Array 'data' tidak kosong");
+
+        timeCount = sizeof(data_item_hour) / sizeof(data_item_hour[0]);
+
+        // Periksa setiap waktu yang disimpan di array
+        for (int i = 0; i < timeCount; i++) {
+          if (currentHour == data_item_hour[i] && currentMinute == data_item_minute[i] && !hasFedToday[i]) {
+            if (lastFeedHour != currentHour || lastFeedMinute != currentMinute) {
+              Serial.println("pakan");
+              // Serial.println(hasFedToday[i]);
+              // Serial.println("--------");
+              hasFedToday[i] = true;  // Set flag agar tidak menjalankan lagi pada hari yang sama untuk waktu ini
+              // Serial.println(hasFedToday[i]);
+              lastFeedHour = currentHour;
+              lastFeedMinute = currentMinute;
+            }
+            
+          }
+        }
       } 
 
       // Reset flags pada jam tertentu (misalnya setelah tengah malam)
       if (timeClient.getHours() == 0) {
         hasFedAt22 = false;
         hasFedAt23 = false;
+        for (int i = 0; i < timeCount; i++) {
+          hasFedToday[i] = false;
+        }
+        lastFeedHour = -1;
+        lastFeedMinute = -1;
       }
       //----
 
-      for (JsonObject data_item : doc["data"].as<JsonArray>()) {
+      // for (JsonObject data_item : doc["data"].as<JsonArray>()) {
 
-        int data_item_id = data_item["id"]; // 12, 2, 11
-        int data_item_hour = data_item["hour"]["int"]; // "07", "12", "17"
-        int data_item_minute = data_item["minute"]["int"]; // "30", "00", "00"
+      //   int data_item_id = data_item["id"]; // 12, 2, 11
+      //   int data_item_hour = data_item["hour"]["int"]; // "07", "12", "17"
+      //   int data_item_minute = data_item["minute"]["int"]; // "30", "00", "00"
 
-        Serial.println(data_item_hour);
-        Serial.println(data_item_minute);
+      //   Serial.println(data_item_hour);
+      //   Serial.println(data_item_minute);
 
-        types(data_item_hour);
+      //   types(data_item_hour);
 
-        delay(1500);
+      //   delay(1500);
 
-      }
+      // }
+      //----
+
+      //melakukan pemberian pakan sekarang
 
       statusFeed = httpGetStatusFeed(serverFeed);
       Serial.println(statusFeed);
@@ -287,6 +346,8 @@ void loop()
         }
         previousDataPending = data_pending; // Update previousDataPending ke status terbaru
       }
+
+      //------
 
       delay(1500);
 
