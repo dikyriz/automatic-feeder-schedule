@@ -55,6 +55,8 @@ int angka = 50;
 bool hasFedAt22 = false;
 bool hasFedAt23 = false;
 
+bool previousDataPending = false;
+
 WiFiClientSecure httpsClient;
 HTTPClient http;
 
@@ -146,11 +148,11 @@ String httpGetStatusFeed(const char *serverName){
 }
 
 // untuk melakukan update status pemberian pakan
-String httpUpdateStatusFeed(const char *serverName){
+String httpUpdateStatusFeed(const char *serverName, int feedId){
   httpsClient.setInsecure();
-  httpsClient.connect(serverName, 443);
+  httpsClient.connect(serverName + String(feedId) + "/complete", 443);
 
-  http.begin(httpsClient, serverName);
+  http.begin(httpsClient, serverName + String(feedId) + "/complete");
   http.addHeader("Content-Type", "application/json");
   
   int httpCode = http.PUT("");
@@ -276,7 +278,15 @@ void loop()
         
       Serial.println(data_pending);
 
-      httpUpdateStatusFeed(serverFeedComplete);
+      if (data_pending != previousDataPending) { // Cek apakah ada perubahan pada data_pending
+        if (data_pending) {
+          Serial.println("siap lakukan proses");
+          httpUpdateStatusFeed(serverFeedComplete, data_id);
+        } else {
+          Serial.println("belum dapat melakukan proses");
+        }
+        previousDataPending = data_pending; // Update previousDataPending ke status terbaru
+      }
 
       delay(1500);
 
