@@ -32,7 +32,7 @@ const char *password = "sodaGembirah";
 #define SERVER "https://service-feed.dimasoktafianto.my.id/api/"
 
 // Data pH
-String phValue = "5.00";
+// String phValue = "5.00";
 
 //Server API JSON untuk jadwal
 // const char *serverName = "https://service-feed.dimasoktafianto.my.id/api/";
@@ -65,6 +65,11 @@ int timeCount;
 int lastFeedHour = -1;
 int lastFeedMinute = -1;
 
+//inisialisasi sensor
+int pHSense = A0;
+int samples = 10;
+float adc_resolution = 1024.0;
+
 WiFiClientSecure httpsClient;
 HTTPClient http;
 
@@ -95,7 +100,7 @@ String httpGETRequest(const char *serverName)
 }
 
 // untuk melakukan pengiriman data sensor
-String httpPostData(const char *serverName){
+String httpPostData(const char *serverName, String phValue){
 
   httpsClient.setInsecure();
   httpsClient.connect(String(serverName) + "ph-readings/create", 443);
@@ -208,6 +213,13 @@ void setup()
   delay(2000);
 }
 
+float ph (float voltage) {
+    // return 7 + ((3.0 - voltage) / 0.18); //ardu
+    // return 7 + ((2.6 - voltage) / 0.18); // node
+     return 7 + ((3.0 - voltage) / 0.18); // node
+    // return 7 + ((2.3 - voltage) / 0.18);
+}
+
 void loop()
 {
   if ((millis() - lastTime) > timerDelay)
@@ -224,6 +236,19 @@ void loop()
       // Serial.println(timeClient.getFormattedTime());
       // Serial.println(timeClient.getHours());
       // Serial.println(timeClient.getMinutes());
+
+      //pengiriman data sensor ke api
+      for (int i = 0; i < samples; i++)
+      {
+          measurings += analogRead(pHSense);
+          delay(10);
+
+      }
+
+      float voltage = 3.3 / adc_resolution * measurings/samples;
+
+      // Serial.println(String(ph(voltage)));
+      httpPostData(SERVER, String(ph(voltage)));
 
       //melakukan pemanggilan jadwal
 
