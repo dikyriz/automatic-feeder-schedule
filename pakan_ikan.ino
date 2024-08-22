@@ -215,13 +215,14 @@ void setup()
 
 float ph (float voltage) {
     // return 7 + ((3.0 - voltage) / 0.18); //ardu
-    // return 7 + ((2.6 - voltage) / 0.18); // node
-     return 7 + ((3.0 - voltage) / 0.18); // node
+    return 7 + ((2.6 - voltage) / 0.18); // node
+    //  return 7 + ((3.0 - voltage) / 0.18); // node
     // return 7 + ((2.3 - voltage) / 0.18);
 }
 
 void loop()
 {
+  int measurings=0;
   if ((millis() - lastTime) > timerDelay)
   {
    
