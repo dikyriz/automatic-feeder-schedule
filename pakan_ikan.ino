@@ -14,6 +14,11 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+//servo
+#include <Servo.h>
+
+Servo servo;
+
 //JSON Library untuk arduino
 //Untuk melakukan serialize dan deserialize
 DynamicJsonDocument doc(1536);
@@ -25,8 +30,8 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 //SSID
-const char *ssid = "Cilok";
-const char *password = "sodaGembirah";
+const char *ssid = "merak98";
+const char *password = "9febr97a";
 
 //link untuk mengirim nilai sensor
 #define SERVER "https://service-feed.dimasoktafianto.my.id/api/"
@@ -195,6 +200,8 @@ String httpUpdateStatusFeed(const char *serverName, int feedId){
 void setup()
 {
   Serial.begin(115200);
+  servo.attach(D7);  // attaches the servo on pin D7 to the servo object
+  servo.write(180);
 
   //Memulai konfigurasi WIFI
   WiFi.begin(ssid, password);
@@ -366,8 +373,9 @@ void loop()
       if (data_pending != previousDataPending) { // Cek apakah ada perubahan pada data_pending
         if (data_pending) {
           Serial.println("siap lakukan proses");
+          servoRunning();
           httpUpdateStatusFeed(SERVER, data_id);
-        } else {
+        } else { 
           Serial.println("belum dapat melakukan proses");
         }
         previousDataPending = data_pending; // Update previousDataPending ke status terbaru
@@ -391,4 +399,17 @@ void loop()
 void types(int a) { 
   Serial.println("it's an int");
 
+}
+
+void servoRunning(){
+  for (int i = 0; i < 2; i++) {
+    servo.write(180);
+    Serial.println("posisi awal");
+    delay(2000);
+
+    servo.write(0);
+    Serial.println("mengeluarkan pakan");
+    delay(2000);  
+  }
+  servo.write(180);
 }
