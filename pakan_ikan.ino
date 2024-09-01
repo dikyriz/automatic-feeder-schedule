@@ -30,8 +30,8 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 //SSID
-const char *ssid = "merak98";
-const char *password = "9febr97a";
+const char *ssid = "pakanikan";
+const char *password = "pakanikan01";
 
 //link untuk mengirim nilai sensor
 #define SERVER "https://service-feed.dimasoktafianto.my.id/api/"
@@ -303,9 +303,11 @@ void loop()
 
         if(timeClient.getHours() == 22 && !hasFedAt22){
           Serial.println("pakan");
+          servoRunning();
           hasFedAt22 = true;
         } else if(timeClient.getHours() == 23 && !hasFedAt23){
           Serial.println("pakan");
+          servoRunning();
           hasFedAt23 = true;
         }
       } else {
@@ -318,6 +320,7 @@ void loop()
           if (currentHour == data_item_hour[i] && currentMinute == data_item_minute[i] && !hasFedToday[i]) {
             if (lastFeedHour != currentHour || lastFeedMinute != currentMinute) {
               Serial.println("pakan");
+              servoRunning();
               // Serial.println(hasFedToday[i]);
               // Serial.println("--------");
               hasFedToday[i] = true;  // Set flag agar tidak menjalankan lagi pada hari yang sama untuk waktu ini
